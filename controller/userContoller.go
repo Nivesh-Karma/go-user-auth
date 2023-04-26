@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/Nivesh-Karma/go-user-admin/models"
 	"github.com/gin-gonic/gin"
 )
 
 func CreateNewUser(c *gin.Context) {
-	log.Println("CreateNewUser invoked")
 	var user models.UserRequest
 	if err := c.Bind(&user); err != nil {
 		log.Println("error: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
 		return
 	}
-
+	user.Username = strings.ToLower(user.Username)
 	if _, ok := findUser(user.Username); ok {
 		log.Printf("User %s already exists", user.Username)
 		c.JSON(http.StatusForbidden, gin.H{"error": "user already exists!"})
@@ -30,6 +30,13 @@ func CreateNewUser(c *gin.Context) {
 		return
 	}
 	user.Password = hashed
+	hashed, err = getPasswordHash(strings.ToLower(user.SecurityAnswer1))
+	if err != nil {
+		log.Println("error: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating the user, try again later!"})
+		return
+	}
+	user.SecurityAnswer1 = hashed
 
 	if userStatus := createUser(&user, "email"); userStatus {
 		c.JSON(http.StatusCreated, gin.H{"message": fmt.Sprintf("user %s created successfully", user.Username)})
@@ -39,16 +46,14 @@ func CreateNewUser(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	log.Println("Login started")
 	var userLogin models.LoginRequest
 	if err := c.Bind(&userLogin); err != nil {
 		log.Println("error: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
 		return
 	}
-	log.Println("Login json.Bind")
+	userLogin.Username = strings.ToLower(userLogin.Username)
 	user, ok := findUser(userLogin.Username)
-	log.Println("Login findUser completed")
 	if !ok {
 		log.Printf("User %s does not exist", userLogin.Username)
 		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("user %s doesnot exist", userLogin.Username)})
@@ -60,7 +65,6 @@ func Login(c *gin.Context) {
 	if !user.Active {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "account has been deactivated. Please contact support."})
 	}
-	log.Println("validatePassword started")
 	isValid := validatePassword(user.Password, userLogin.Password)
 	if !isValid {
 		go updateFailedCounter(user)
@@ -71,14 +75,12 @@ func Login(c *gin.Context) {
 			go resetFailedCount(user)
 		}
 	}
-	log.Println("validatePassword ended")
 	if token, err := createJWTToken(user.Username); err != nil {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 	} else {
 		c.IndentedJSON(http.StatusOK, token)
 	}
-	log.Println("Login ended")
 }
 
 func Validate(c *gin.Context) {
@@ -86,13 +88,21 @@ func Validate(c *gin.Context) {
 	if !ok {
 		c.AbortWithStatus(http.StatusNotAcceptable)
 	}
-	_, ok = findUser(username.(string))
+	user, ok := findUser(username.(string))
 	if !ok {
 		log.Printf("User %s does not exist", username)
-		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("user %s doesnot exist", username)})
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("user %s doesnot exist", username)})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "valid token"})
+	userResponse := models.UserResponse{
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Admin:     user.Admin,
+		Active:    user.Active,
+		Premium:   user.PremiumUser,
+	}
+	c.IndentedJSON(http.StatusOK, userResponse)
 }
 
 func ValidateAdmin(c *gin.Context) {
@@ -116,25 +126,30 @@ func isAdmin(username string) (bool, bool) {
 
 func ResetPassword(c *gin.Context) {
 	var userLogin models.ResetPassword
-	if err := c.ShouldBindJSON(&userLogin); err != nil {
+	if err := c.Bind(&userLogin); err != nil {
 		log.Println("error: ", err)
 		c.AbortWithStatusJSON(http.StatusBadRequest,
 			gin.H{"error": "Failed to read body"})
+		return
 	}
 	user, ok := findUser(userLogin.Username)
 	if !ok {
 		log.Printf("User %s does not exist", userLogin.Username)
 		c.AbortWithStatusJSON(http.StatusForbidden,
 			gin.H{"error": fmt.Sprintf("user %s doesnot exist", userLogin.Username)})
+		return
 	}
 	if user.UserSource != "email" {
 		c.AbortWithStatusJSON(http.StatusNotAcceptable,
 			gin.H{"error": fmt.Sprintf("Please use %s authentication. Password reset not allowed.",
 				user.UserSource)})
+		return
 	}
-	if user.SecurityQuestion1 != string(userLogin.SecurityQuestion1) || user.SecurityAnswer1 != string(userLogin.SecurityAnswer1) {
+	if user.SecurityQuestion1 != string(userLogin.SecurityQuestion1) ||
+		validatePassword(user.SecurityAnswer1, strings.ToLower(string(userLogin.SecurityAnswer1))) {
 		c.AbortWithStatusJSON(http.StatusForbidden,
 			gin.H{"error": "Security question or answer does not match"})
+		return
 	}
 	hashed, err := getPasswordHash(userLogin.NewPassword)
 	if err != nil {
@@ -214,6 +229,12 @@ func AdminUpdates(c *gin.Context) {
 	}
 	if adminRequest.Lock {
 		user.Locked = true
+	}
+	if adminRequest.Promote {
+		user.Admin = true
+	}
+	if adminRequest.Demote {
+		user.Admin = false
 	}
 	updateUser(user)
 	c.JSON(http.StatusAccepted, gin.H{"message": "updated all"})

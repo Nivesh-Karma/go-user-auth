@@ -39,21 +39,21 @@ func (Users) TableName() string {
 }
 
 type UserRequest struct {
-	Username          string      `json:"username" binding:"required,email"`
-	Password          string      `json:"password" binding:"required"`
-	FirstName         string      `json:"first_name" binding:"required"`
-	LastName          string      `json:"last_name" binding:"required"`
-	SecurityQuestion1 ChoicesEnum `json:"security_question_1" binding:"required"`
-	SecurityAnswer1   string      `json:"security_answer_1"`
+	Username          string      `form:"username" binding:"required,email"`
+	Password          string      `form:"password" binding:"required"`
+	FirstName         string      `form:"first_name" binding:"required"`
+	LastName          string      `form:"last_name" binding:"required"`
+	SecurityQuestion1 ChoicesEnum `form:"security_question_1" binding:"required"`
+	SecurityAnswer1   string      `form:"security_answer_1"`
 }
 
 type UserResponse struct {
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Admin     bool   `json:"admin"`
-	Active    bool   `json:"active"`
-	Premium   bool   `json:"premium"`
+	Username  string `form:"username"`
+	FirstName string `form:"first_name"`
+	LastName  string `form:"last_name"`
+	Admin     bool   `form:"admin"`
+	Active    bool   `form:"active"`
+	Premium   bool   `form:"premium"`
 }
 
 type LoginRequest struct {
@@ -62,24 +62,26 @@ type LoginRequest struct {
 }
 
 type ResetPassword struct {
-	Username          string      `json:"username" binding:"required,email"`
-	NewPassword       string      `json:"new_password" binding:"required"`
-	SecurityQuestion1 ChoicesEnum `json:"security_question_1" binding:"required"`
-	SecurityAnswer1   string      `json:"security_answer_1" binding:"required"`
+	Username          string      `form:"username" binding:"required,email"`
+	NewPassword       string      `form:"new_password" binding:"required"`
+	SecurityQuestion1 ChoicesEnum `form:"security_question_1" binding:"required"`
+	SecurityAnswer1   string      `form:"security_answer_1" binding:"required"`
 }
 
 type UnlockAccount struct {
-	Username          string      `json:"username" binding:"required,email"`
-	SecurityQuestion1 ChoicesEnum `json:"security_question_1" binding:"required"`
-	SecurityAnswer1   string      `json:"security_answer_1" binding:"required"`
+	Username          string      `form:"username" binding:"required,email"`
+	SecurityQuestion1 ChoicesEnum `form:"security_question_1" binding:"required"`
+	SecurityAnswer1   string      `form:"security_answer_1" binding:"required"`
 }
 
 type AdminUpdates struct {
-	IsNewPassword bool   `json:"is_new_password" binding:"required"`
-	NewPassword   string `json:"password" binding:"required"`
-	Username      string `json:"username" binding:"required,email"`
-	Activate      bool   `json:"activate"`
-	Deactivate    bool   `json:"deactivate"`
-	Lock          bool   `json:"lock"`
-	Unlock        bool   `json:"unlock"`
+	Username      string `form:"username" binding:"required,email"`
+	IsNewPassword bool   `form:"is_new_password" binding:"required"`
+	NewPassword   string `form:"password" binding:"required"`
+	Activate      bool   `form:"activate"`
+	Deactivate    bool   `form:"deactivate"`
+	Lock          bool   `form:"lock"`
+	Unlock        bool   `form:"unlock"`
+	Promote       bool   `form:"promote"`
+	Demote        bool   `form:"demote"`
 }

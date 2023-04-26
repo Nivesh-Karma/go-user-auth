@@ -8,7 +8,6 @@ import (
 )
 
 func findUser(email string) (*models.Users, bool) {
-	log.Println("in findUser")
 	user := models.Users{}
 	if result := config.DB.Where("username = ?", email).First(&user); result.Error != nil {
 		return &user, false

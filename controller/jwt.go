@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"sync"
@@ -13,7 +12,6 @@ import (
 )
 
 func createJWTToken(username string) (*models.TokenModel, error) {
-	log.Println("createJWTToken started")
 	wg := sync.WaitGroup{}
 	token := &models.TokenModel{TokenType: "Bearer"}
 	dataChan := make(chan *models.TokenRequest, 2)
@@ -30,7 +28,6 @@ func createJWTToken(username string) (*models.TokenModel, error) {
 	}()
 	wg.Wait()
 	close(dataChan)
-	log.Println("Got auth token for auth and refresh")
 	for n := range dataChan {
 		if n.Err != nil {
 			return nil, n.Err
@@ -42,7 +39,6 @@ func createJWTToken(username string) (*models.TokenModel, error) {
 			token.RefreshToken = n.AccessToken
 		}
 	}
-	log.Println("createJWTToken completed")
 	return token, nil
 }
 
@@ -51,7 +47,6 @@ func CreateRefreshToken(username string) *models.TokenRequest {
 }
 
 func createAuthToken(username, scope string) *models.TokenRequest {
-	log.Println("createAuthToken started")
 	secretKey := os.Getenv("SECRET_KEY")
 	expireMinutes := os.Getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 	duration, _ := strconv.Atoi(expireMinutes)
@@ -73,7 +68,6 @@ func createAuthToken(username, scope string) *models.TokenRequest {
 		return &tokenRequest
 	}
 	tokenRequest.Expire = time.Unix(toEncode["exp"].(int64), 0)
-	log.Println("createAuthToken ended")
 	return &tokenRequest
 }
 
