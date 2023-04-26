@@ -39,15 +39,16 @@ func CreateNewUser(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	log.Println("CreateNewUser started")
+	log.Println("Login started")
 	var userLogin models.LoginRequest
 	if err := c.Bind(&userLogin); err != nil {
 		log.Println("error: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
 		return
 	}
-	log.Println("CreateNewUser json.Bind")
+	log.Println("Login json.Bind")
 	user, ok := findUser(userLogin.Username)
+	log.Println("Login findUser completed")
 	if !ok {
 		log.Printf("User %s does not exist", userLogin.Username)
 		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("user %s doesnot exist", userLogin.Username)})
@@ -59,21 +60,25 @@ func Login(c *gin.Context) {
 	if !user.Active {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "account has been deactivated. Please contact support."})
 	}
+	log.Panicln("validatePassword started")
 	isValid := validatePassword(user.Password, userLogin.Password)
 	if !isValid {
 		go updateFailedCounter(user)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect username or password"})
 		return
 	} else {
-		go resetFailedCount(user)
+		if user.FailedCount > 0 || user.Locked {
+			go resetFailedCount(user)
+		}
 	}
+	log.Panicln("validatePassword ended")
 	if token, err := createJWTToken(user.Username); err != nil {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 	} else {
 		c.IndentedJSON(http.StatusOK, token)
 	}
-	log.Println("CreateNewUser ended")
+	log.Println("Login ended")
 }
 
 func Validate(c *gin.Context) {

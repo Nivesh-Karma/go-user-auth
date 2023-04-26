@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Nivesh-Karma/go-user-admin/config"
@@ -15,7 +14,6 @@ func findUser(email string) (*models.Users, bool) {
 		log.Println("Error:", result.Error)
 		return &user, false
 	}
-	fmt.Println(email)
 	return &user, true
 }
 

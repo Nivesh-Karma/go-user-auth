@@ -17,7 +17,6 @@ func getPasswordHash(password string) (string, error) {
 }
 
 func validatePassword(hashedPassword string, password string) bool {
-	log.Println("in validatePassword")
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
