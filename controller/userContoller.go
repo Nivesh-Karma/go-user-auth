@@ -60,7 +60,7 @@ func Login(c *gin.Context) {
 	if !user.Active {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "account has been deactivated. Please contact support."})
 	}
-	log.Panicln("validatePassword started")
+	log.Println("validatePassword started")
 	isValid := validatePassword(user.Password, userLogin.Password)
 	if !isValid {
 		go updateFailedCounter(user)
@@ -71,7 +71,7 @@ func Login(c *gin.Context) {
 			go resetFailedCount(user)
 		}
 	}
-	log.Panicln("validatePassword ended")
+	log.Println("validatePassword ended")
 	if token, err := createJWTToken(user.Username); err != nil {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
