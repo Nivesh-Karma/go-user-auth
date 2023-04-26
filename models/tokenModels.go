@@ -14,3 +14,10 @@ type RefreshTokenModel struct {
 	TokenType   string    `json:"token_type"`
 	Expire      time.Time `json:"expire"`
 }
+
+type TokenRequest struct {
+	AccessToken string
+	Scope       string
+	Expire      time.Time
+	Err         error
+}

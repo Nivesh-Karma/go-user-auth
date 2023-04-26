@@ -39,13 +39,14 @@ func CreateNewUser(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	log.Println("CreateNewUser invoked")
+	log.Println("CreateNewUser started")
 	var userLogin models.LoginRequest
 	if err := c.Bind(&userLogin); err != nil {
 		log.Println("error: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
 		return
 	}
+	log.Println("CreateNewUser json.Bind")
 	user, ok := findUser(userLogin.Username)
 	if !ok {
 		log.Printf("User %s does not exist", userLogin.Username)
@@ -72,6 +73,7 @@ func Login(c *gin.Context) {
 	} else {
 		c.IndentedJSON(http.StatusOK, token)
 	}
+	log.Println("CreateNewUser ended")
 }
 
 func Validate(c *gin.Context) {

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Nivesh-Karma/go-user-admin/middleware"
@@ -12,49 +13,68 @@ import (
 )
 
 func createJWTToken(username string) (*models.TokenModel, error) {
-
-	encodedJWT, expire, err := createAuthToken(username, "auth")
-	if err != nil {
-		return nil, err
+	log.Println("createJWTToken started")
+	wg := sync.WaitGroup{}
+	token := &models.TokenModel{TokenType: "Bearer"}
+	dataChan := make(chan *models.TokenRequest, 2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		tokenObject := createAuthToken(username, "auth")
+		dataChan <- tokenObject
+	}()
+	go func() {
+		defer wg.Done()
+		tokenObject := createAuthToken(username, "refresh")
+		dataChan <- tokenObject
+	}()
+	wg.Wait()
+	close(dataChan)
+	log.Println("Got auth token for auth and refresh")
+	for n := range dataChan {
+		if n.Err != nil {
+			return nil, n.Err
+		}
+		if n.Scope == "auth" {
+			token.AccessToken = n.AccessToken
+			token.Expire = n.Expire
+		} else {
+			token.RefreshToken = n.AccessToken
+		}
 	}
-	refreshJWT, _, err := createAuthToken(username, "refresh")
-	if err != nil {
-		return nil, err
-	}
-	token := &models.TokenModel{
-		AccessToken:  encodedJWT,
-		Expire:       expire,
-		RefreshToken: refreshJWT,
-		TokenType:    "Bearer",
-	}
+	log.Println("createJWTToken completed")
 	return token, nil
 }
 
-func CreateRefreshToken(username string) (string, time.Time, error) {
+func CreateRefreshToken(username string) *models.TokenRequest {
 	return createAuthToken(username, "refresh")
 }
 
-func createAuthToken(username, scope string) (string, time.Time, error) {
+func createAuthToken(username, scope string) *models.TokenRequest {
+	log.Println("createAuthToken started")
 	secretKey := os.Getenv("SECRET_KEY")
 	expireMinutes := os.Getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 	duration, _ := strconv.Atoi(expireMinutes)
 	if scope != "auth" {
 		duration = 60 * 24 * 30
 	}
+	tokenRequest := models.TokenRequest{Scope: scope}
 	expTime := time.Now().Add(time.Minute * time.Duration(duration)).Unix()
-	log.Println("expTime=", expTime)
 	toEncode := jwt.MapClaims{
 		"sub":   username,
 		"scope": scope,
 		"exp":   expTime,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, toEncode)
-	tokenString, err := token.SignedString([]byte(secretKey))
+	var err error
+	tokenRequest.AccessToken, err = token.SignedString([]byte(secretKey))
 	if err != nil {
-		return "", time.Time{}, err
+		tokenRequest.Err = err
+		return &tokenRequest
 	}
-	expire := time.Unix(toEncode["exp"].(int64), 0)
-	return tokenString, expire, nil
+	tokenRequest.Expire = time.Unix(toEncode["exp"].(int64), 0)
+	log.Println("createAuthToken ended")
+	return &tokenRequest
 }
 
 func RefreshAuthToken(refreshToken string) (*models.RefreshTokenModel, error) {
@@ -62,13 +82,13 @@ func RefreshAuthToken(refreshToken string) (*models.RefreshTokenModel, error) {
 	if err != nil {
 		return nil, err
 	}
-	encodedJWT, expire, err := createAuthToken(username, "auth")
-	if err != nil {
+	tokenRequest := createAuthToken(username, "auth")
+	if tokenRequest.Err != nil {
 		return nil, err
 	}
 	token := &models.RefreshTokenModel{
-		AccessToken: encodedJWT,
-		Expire:      expire,
+		AccessToken: tokenRequest.AccessToken,
+		Expire:      tokenRequest.Expire,
 		TokenType:   "Bearer",
 	}
 	return token, nil
