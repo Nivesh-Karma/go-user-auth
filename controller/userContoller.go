@@ -239,3 +239,16 @@ func AdminUpdates(c *gin.Context) {
 	updateUser(user)
 	c.JSON(http.StatusAccepted, gin.H{"message": "updated all"})
 }
+
+func RefreshUserToken(c *gin.Context) {
+	username, ok := c.Get("username")
+	if !ok {
+		c.AbortWithStatus(http.StatusNotAcceptable)
+		return
+	}
+	authToken, err := refreshAuthToken(username.(string))
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}
+	c.IndentedJSON(http.StatusOK, authToken)
+}

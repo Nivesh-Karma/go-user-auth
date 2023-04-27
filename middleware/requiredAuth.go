@@ -38,20 +38,45 @@ func VerifyJWTToken(tokenString string, scope string) (string, error) {
 	return username, nil
 }
 
-func RequireAuth(c *gin.Context) {
+func verifyBearerToken(c *gin.Context) (string, error) {
 	tokenString := c.GetHeader("Authorization")
 	splitToken := strings.Split(tokenString, "Bearer")
 	if len(splitToken) != 2 {
 		// Error: Bearer token not in proper format
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unable to find Bearer token"})
+		return "", errors.New("unable to find beared token")
 	}
 
 	tokenString = strings.TrimSpace(splitToken[1])
 
 	username, err := VerifyJWTToken(tokenString, "auth")
+	return username, err
+}
+
+func RequireAuth(c *gin.Context) {
+	username, err := verifyBearerToken(c)
 	if err != nil {
 		log.Println("RequireAuth", err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Failed to verify token"})
+		return
+	}
+	c.Set("username", username)
+	c.Next()
+}
+
+func VerifyRefreshToken(c *gin.Context) {
+	username, err := verifyBearerToken(c)
+	if err != nil {
+		log.Println("RequireAuth", err)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Failed to verify token"})
+		return
+	}
+	tokenString := c.GetHeader("Refresh-Token")
+	_, err = VerifyJWTToken(tokenString, "refresh")
+	if err != nil {
+		log.Println("VerifyRefreshToken", err)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
 	}
 	c.Set("username", username)
 	c.Next()

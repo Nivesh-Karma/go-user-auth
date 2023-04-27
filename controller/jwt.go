@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Nivesh-Karma/go-user-admin/middleware"
 	"github.com/Nivesh-Karma/go-user-admin/models"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -71,14 +70,10 @@ func createAuthToken(username, scope string) *models.TokenRequest {
 	return &tokenRequest
 }
 
-func RefreshAuthToken(refreshToken string) (*models.RefreshTokenModel, error) {
-	username, err := middleware.VerifyJWTToken(refreshToken, "refresh")
-	if err != nil {
-		return nil, err
-	}
+func refreshAuthToken(username string) (*models.RefreshTokenModel, error) {
 	tokenRequest := createAuthToken(username, "auth")
 	if tokenRequest.Err != nil {
-		return nil, err
+		return nil, tokenRequest.Err
 	}
 	token := &models.RefreshTokenModel{
 		AccessToken: tokenRequest.AccessToken,

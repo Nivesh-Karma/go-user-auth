@@ -20,5 +20,8 @@ func ConnectDB() {
 	if err != nil {
 		log.Fatal("Postgres database is not available.", err)
 	}
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(50)
 	DB = db
 }

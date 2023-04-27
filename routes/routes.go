@@ -17,6 +17,7 @@ func Route(router *gin.Engine) {
 		v1.GET("/verify-token", middleware.RequireAuth, controller.Validate)
 		v1.GET("/verify-admin", middleware.RequireAuth, controller.ValidateAdmin)
 		v1.GET("/admin-updates", middleware.RequireAuth, controller.AdminUpdates)
+		v1.GET("/refresh-token", middleware.VerifyRefreshToken, controller.RefreshUserToken)
 	}
 
 	google := router.Group("/google-auth/api/v1")
