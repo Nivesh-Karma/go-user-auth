@@ -39,7 +39,9 @@ func CreateNewUser(c *gin.Context) {
 	user.SecurityAnswer1 = hashed
 
 	if userStatus := createUser(&user, "email"); userStatus {
-		c.JSON(http.StatusCreated, gin.H{"message": fmt.Sprintf("user %s created successfully", user.Username)})
+		token, _ := createJWTToken(user.Username)
+		go createProfile(token.AccessToken)
+		c.JSON(http.StatusCreated, token)
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating the user, try again later!"})
 	}

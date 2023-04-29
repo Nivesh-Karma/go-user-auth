@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -60,6 +61,24 @@ func GoogleLogin(c *gin.Context) {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 	} else {
+		go createProfile(token.AccessToken)
 		c.IndentedJSON(http.StatusOK, token)
+	}
+}
+
+func createProfile(tokenString string) {
+	url := os.Getenv("PROFILE_URL") + "/create-profile"
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	req, _ := http.NewRequest("POST", url, nil)
+	client := &http.Client{Transport: tr}
+	req.Header.Add("Authorization", "Bearer "+tokenString)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	if resp.StatusCode >= 400 {
+		log.Println("Failed request")
 	}
 }
