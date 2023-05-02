@@ -2,6 +2,8 @@ package controller
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,25 +20,26 @@ func GoogleLogin(c *gin.Context) {
 
 	//parse the token from header
 	token := c.GetHeader("token")
-	// get the id info uisng idtoken service from google
-	idInfo, err := idtoken.Validate(c.Request.Context(), token, os.Getenv("CLIENT_ID"))
-	// if error then return nil
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-			"message": "Unable to authenticate user.",
-		})
+	token_type := c.GetHeader("token_type")
+	username, fName, lName := "", "", ""
+	if token_type == "One-tap" {
+		username, fName, lName = OneTapLogin(c, token)
+	} else if token_type == "Bearer" {
+		username, fName, lName = VerifyGoogleToken(token)
+	} else {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
 		return
 	}
-	// get the username from email tag
-	username := idInfo.Claims["email"].(string)
+	if username == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
+		return
+	}
 	// check if the user exists in DB
 	userData, ok := findUser(username)
 	// if user doesnt exist then create user using go routine
 	if !ok {
 		go func() {
 			userRequest := models.UserRequest{}
-			fName := idInfo.Claims["given_name"].(string)
-			lName := idInfo.Claims["family_name"].(string)
 			userRequest.FirstName = fName
 			userRequest.LastName = lName
 			userRequest.Username = username
@@ -81,4 +84,41 @@ func createProfile(tokenString string) {
 	if resp.StatusCode >= 400 {
 		log.Println("Failed request")
 	}
+}
+
+func OneTapLogin(c *gin.Context, token string) (string, string, string) {
+	// get the id info uisng idtoken service from google
+	idInfo, err := idtoken.Validate(c.Request.Context(), token, os.Getenv("CLIENT_ID"))
+	// if error then return nil
+	if err != nil {
+		log.Println(err)
+		return "", "", ""
+	}
+	// get the username from email tag
+	username := idInfo.Claims["email"].(string)
+	fName := idInfo.Claims["given_name"].(string)
+	lName := idInfo.Claims["family_name"].(string)
+	return username, fName, lName
+}
+
+func VerifyGoogleToken(token string) (string, string, string) {
+	url := fmt.Sprintf("%s?access_token=%s", os.Getenv("GOOGLE_API"), token)
+	req, _ := http.NewRequest("GET", url, nil)
+	// ...
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	if resp.StatusCode >= 400 {
+		return "", "", ""
+	}
+	defer resp.Body.Close()
+	data := models.GoogleLoginRquest{}
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		log.Println(err)
+		return "", "", ""
+	}
+	return data.Email, data.GivenName, data.FamilyName
 }
