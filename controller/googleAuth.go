@@ -70,6 +70,8 @@ func GoogleLogin(c *gin.Context) {
 			token.UserData.LastName = lName
 			token.UserData.Premium = userData.PremiumUser
 			token.UserData.AddRatios = resp["add_ratios"]
+			token.UserData.PeerRatios = resp["peers_ratios"]
+			token.UserData.HistoricalRatios = resp["historical_ratios"]
 		}
 		c.IndentedJSON(http.StatusOK, token)
 	}

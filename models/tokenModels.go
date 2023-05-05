@@ -24,8 +24,10 @@ type TokenRequest struct {
 }
 
 type UserModel struct {
-	FirstName string   `json:"first_name"`
-	LastName  string   `json:"last_name"`
-	Premium   bool     `json:"premium"`
-	AddRatios []string `json:"add_ratios"`
+	FirstName        string   `json:"first_name"`
+	LastName         string   `json:"last_name"`
+	Premium          bool     `json:"premium"`
+	AddRatios        []string `json:"add_ratios"`
+	PeerRatios       []string `json:"peer_ratios"`
+	HistoricalRatios []string `json:"historical_ratios"`
 }

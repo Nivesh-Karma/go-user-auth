@@ -46,6 +46,8 @@ func CreateNewUser(c *gin.Context) {
 			token.UserData.LastName = user.LastName
 			token.UserData.Premium = false
 			token.UserData.AddRatios = resp["add_ratios"]
+			token.UserData.PeerRatios = resp["peers_ratios"]
+			token.UserData.HistoricalRatios = resp["historical_ratios"]
 		}
 		c.JSON(http.StatusCreated, token)
 	} else {
@@ -93,6 +95,8 @@ func Login(c *gin.Context) {
 			token.UserData.LastName = resp.LastName
 			token.UserData.Premium = resp.Premium
 			token.UserData.AddRatios = resp.AddRatios
+			token.UserData.HistoricalRatios = resp.HistoricalRatios
+			token.UserData.PeerRatios = resp.PeerRatios
 		}
 		c.IndentedJSON(http.StatusOK, token)
 	}
