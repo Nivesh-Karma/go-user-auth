@@ -56,6 +56,16 @@ type UserResponse struct {
 	Premium   bool   `form:"premium"`
 }
 
+type ProfileResponse struct {
+	Username         string   `json:"username"`
+	FirstName        string   `json:"first_name"`
+	LastName         string   `json:"last_name"`
+	Premium          bool     `json:"premium"`
+	AddRatios        []string `json:"add_ratios"`
+	PeerRatios       []string `json:"peer_ratios"`
+	HistoricalRatios []string `json:"historical_ratios"`
+}
+
 type LoginRequest struct {
 	Username string `form:"username" binding:"required,email"`
 	Password string `form:"password" binding:"required"`

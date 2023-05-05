@@ -40,7 +40,13 @@ func CreateNewUser(c *gin.Context) {
 
 	if userStatus := createUser(&user, "email"); userStatus {
 		token, _ := createJWTToken(user.Username)
-		go createProfile(token.AccessToken)
+		resp := createProfile(token.AccessToken)
+		if resp != nil {
+			token.UserData.FirstName = user.FirstName
+			token.UserData.LastName = user.LastName
+			token.UserData.Premium = false
+			token.UserData.AddRatios = resp["add_ratios"]
+		}
 		c.JSON(http.StatusCreated, token)
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating the user, try again later!"})
@@ -81,6 +87,13 @@ func Login(c *gin.Context) {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 	} else {
+		resp := GetProfile(token.AccessToken)
+		if resp.Username != "" {
+			token.UserData.FirstName = resp.FirstName
+			token.UserData.LastName = resp.LastName
+			token.UserData.Premium = resp.Premium
+			token.UserData.AddRatios = resp.AddRatios
+		}
 		c.IndentedJSON(http.StatusOK, token)
 	}
 }
@@ -123,7 +136,7 @@ func ValidateAdmin(c *gin.Context) {
 
 func isAdmin(username string) (bool, bool) {
 	user, ok := findUser(username)
-	return user.Active, ok
+	return user.Admin, ok
 }
 
 func ResetPassword(c *gin.Context) {

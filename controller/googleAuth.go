@@ -64,12 +64,18 @@ func GoogleLogin(c *gin.Context) {
 		log.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 	} else {
-		go createProfile(token.AccessToken)
+		resp := createProfile(token.AccessToken)
+		if resp != nil {
+			token.UserData.FirstName = fName
+			token.UserData.LastName = lName
+			token.UserData.Premium = userData.PremiumUser
+			token.UserData.AddRatios = resp["add_ratios"]
+		}
 		c.IndentedJSON(http.StatusOK, token)
 	}
 }
 
-func createProfile(tokenString string) {
+func createProfile(tokenString string) map[string][]string {
 	url := os.Getenv("PROFILE_URL") + "/create-profile"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -80,10 +86,43 @@ func createProfile(tokenString string) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
+		return nil
 	}
 	if resp.StatusCode >= 400 {
 		log.Println("Failed request")
+		return nil
 	}
+	defer resp.Body.Close()
+	data := make(map[string][]string)
+	json.NewDecoder(resp.Body).Decode(&data)
+	return data
+}
+
+func GetProfile(tokenString string) models.ProfileResponse {
+	url := os.Getenv("PROFILE_URL") + "/profile"
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	req, _ := http.NewRequest("GET", url, nil)
+	client := &http.Client{Transport: tr}
+	req.Header.Add("Authorization", "Bearer "+tokenString)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return models.ProfileResponse{}
+	}
+	if resp.StatusCode >= 400 {
+		log.Println("Failed request")
+		return models.ProfileResponse{}
+	}
+	defer resp.Body.Close()
+	data := models.ProfileResponse{}
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		log.Println(err)
+		return models.ProfileResponse{}
+	}
+	return data
 }
 
 func OneTapLogin(c *gin.Context, token string) (string, string, string) {
