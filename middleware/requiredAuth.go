@@ -65,14 +65,14 @@ func RequireAuth(c *gin.Context) {
 }
 
 func VerifyRefreshToken(c *gin.Context) {
-	username, err := verifyBearerToken(c)
+	/*username, err := verifyBearerToken(c)
 	if err != nil {
 		log.Println("RequireAuth", err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Failed to verify token"})
 		return
-	}
+	}*/
 	tokenString := c.GetHeader("Refresh-Token")
-	_, err = VerifyJWTToken(tokenString, "refresh")
+	username, err := VerifyJWTToken(tokenString, "refresh")
 	if err != nil {
 		log.Println("VerifyRefreshToken", err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
